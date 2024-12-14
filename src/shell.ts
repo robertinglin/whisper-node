@@ -13,6 +13,12 @@ export interface IShellOptions {
 function findWhisperCppDir(): string {
   // Check if running from node_modules
   const nodeModulesPath = path.join(process.cwd(), 'node_modules', 'whisper-node-server', 'lib', 'whisper.cpp');
+
+  const releaseBin = path.join(nodeModulesPath, 'build', 'bin', 'Release');
+  if (fs.existsSync(releaseBin)) {
+    return releaseBin;
+  }
+
   if (fs.existsSync(nodeModulesPath)) {
     return nodeModulesPath;
   }

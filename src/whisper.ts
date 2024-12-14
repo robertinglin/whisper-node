@@ -21,8 +21,9 @@ const modelPathOrName = (mn: string | null, mp: string | null): string => {
   
   // Use default model if none specified
   if (!mn && !mp) {
+    const nodeModulesPath = path.join(process.cwd().split('whisper.cpp')[0], 'whisper.cpp'); 
     console.log("[whisper-node-server] No 'modelName' or 'modelPath' provided. Using default model:", DEFAULT_MODEL,"\n");
-    const modelPath = path.join('models', MODELS_LIST[DEFAULT_MODEL]);
+    const modelPath = path.join(nodeModulesPath, 'models', MODELS_LIST[DEFAULT_MODEL]);
     
     if (!existsSync(modelPath)) {
       throw `'${DEFAULT_MODEL}' not downloaded! Run 'npx whisper-node-server download'`;
