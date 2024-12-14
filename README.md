@@ -27,7 +27,12 @@ npm install whisper-node-server
 npx whisper-node-server download
 ```
 
-[Requirement for Windows: Install the ```make``` command from here.](https://gnuwin32.sourceforge.net/packages/make.htm)
+3. Build whisper.cpp 
+
+### Windows
+use w64devkit and cmake 
+
+
 
 ## Usage
 
@@ -176,19 +181,6 @@ Example .mp3 file converted with an [FFmpeg](https://ffmpeg.org) command: ```ffm
 - [Whisper OpenAI (using C++ port by: ggerganov)](https://github.com/ggerganov/whisper.cpp)
 - [ShellJS](https://www.npmjs.com/package/shelljs)
 
-## Roadmap
-
-- [x] Support projects not using Typescript
-- [x] Allow custom directory for storing models
-- [ ] Config files as alternative to model download cli
-- [ ] Remove *path*, *shelljs* and *prompt-sync* package for browser, react-native expo, and webassembly compatibility
-- [ ] [fluent-ffmpeg](https://www.npmjs.com/package/fluent-ffmpeg) to automatically convert to 16Hz .wav files as well as support separating audio from video
-- [ ] [Pyanote diarization](https://huggingface.co/pyannote/speaker-diarization) for speaker names
-- [ ] [Implement WhisperX as optional alternative model](https://github.com/m-bain/whisperX) for diarization and higher precision timestamps (as alternative to C++ version)
-- [ ] Add option for viewing detected langauge as described in [Issue 16](https://github.com/ariym/whisper-node-server/issues/16)
-- [ ] Include typescript types in ```d.ts``` file
-- [x] Add support for language option
-- [ ] Add support for transcribing audio streams as already implemented in whisper.cpp
 
 ## Modifying whisper-node-server
 
@@ -196,7 +188,10 @@ Example .mp3 file converted with an [FFmpeg](https://ffmpeg.org) command: ```ffm
 
 ```npm run build``` - runs tsc, outputs to '/dist' and gives sh permission to 'dist/download.js'
 
+
+
 ## Acknowledgements
 
 - [Georgi Gerganov](https://ggerganov.com/)
 - [Ari](https://aricv.com)
+
