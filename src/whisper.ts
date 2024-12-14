@@ -1,65 +1,82 @@
 // todo: remove all imports from file
 import { existsSync } from 'fs';
+import path from 'path';
 import { DEFAULT_MODEL } from './constants';
 
 // return as syntax for whisper.cpp command
-export const createCppCommand = ({ filePath, modelName = null, modelPath = null, options = null }: CppCommandTypes) =>
+export const createCppCommand = ({ filePath, modelName = null, modelPath = null, options = null, isServer = false, port = 8080 }: CppCommandTypes) => {
+  const flags = getFlags(options);
+  const model = modelPathOrName(modelName, modelPath);
+  const exeExt = process.platform === 'win32' ? '.exe' : '';
+  
+  if (isServer) {
+    return `server${exeExt} ${flags} -m ${model} --host 0.0.0.0 --port ${port}`;
+  } else {
+    return `main${exeExt} ${flags} -m ${model} -f ${filePath}`;
+  }
+};
 
-  `./main ${getFlags(options)} -m ${modelPathOrName(modelName, modelPath)} -f ${filePath}`;
-
-
-const modelPathOrName = (mn: string, mp: string) => {
+const modelPathOrName = (mn: string | null, mp: string | null): string => {
   if (mn && mp) throw "Submit a modelName OR a modelPath. NOT BOTH!"
-  else if (!mn && !mp) {
-    console.log("[whisper-node] No 'modelName' or 'modelPath' provided. Trying default model:", DEFAULT_MODEL,"\n");
-
-    // second modelname check to verify is installed in directory
-    const modelPath = `./models/${MODELS_LIST[DEFAULT_MODEL]}`
-
+  
+  // Use default model if none specified
+  if (!mn && !mp) {
+    console.log("[whisper-node-server] No 'modelName' or 'modelPath' provided. Using default model:", DEFAULT_MODEL,"\n");
+    const modelPath = path.join('models', MODELS_LIST[DEFAULT_MODEL]);
+    
     if (!existsSync(modelPath)) {
-      // throw `'${mn}' not downloaded! Run 'npx whisper-node download'`;
-      throw `'${DEFAULT_MODEL}' not downloaded! Run 'npx whisper-node download'\n`;
+      throw `'${DEFAULT_MODEL}' not downloaded! Run 'npx whisper-node-server download'`;
     }
-
+    
     return modelPath;
   }
-  // modelpath
-  else if (mp) return mp;
-  // modelname
-  else if (MODELS_LIST[mn]) {
-    // second modelname check to verify is installed in directory
-    const modelPath = `./models/${MODELS_LIST[mn]}`
-
+  
+  // Use custom model path
+  if (mp) return mp;
+  
+  // Use model from models directory
+  if (mn && MODELS_LIST[mn]) {
+    const modelPath = path.join('models', MODELS_LIST[mn]);
+    
     if (!existsSync(modelPath)) {
-      throw `'${mn}' not found! Run 'npx whisper-node download'`;
+      throw `'${mn}' not found! Run 'npx whisper-node-server download'`;
     }
-
+    
     return modelPath;
   }
-  else if (mn) throw `modelName "${mn}" not found in list of models. Check your spelling OR use a custom modelPath.`
-  else throw `modelName OR modelPath required! You submitted modelName: '${mn}', modelPath: '${mp}'`
+  
+  if (mn) throw `modelName "${mn}" not found in list of models. Check your spelling OR use a custom modelPath.`;
+  throw `modelName OR modelPath required! You submitted modelName: '${mn}', modelPath: '${mp}'`;
 }
-
 
 // option flags list: https://github.com/ggerganov/whisper.cpp/blob/master/README.md?plain=1#L91
-// TODO: Replace with for loop that rejects all unrecognized keys
-const getFlags = (flags: IFlagTypes): string => {
-  let s = "";
-
-  // output files
-  if (flags.gen_file_txt) s += " -otxt";
-  if (flags.gen_file_subtitle) s += " -osrt";
-  if (flags.gen_file_vtt) s += " -ovtt";
-  // timestamps
-  if (flags.timestamp_size && flags.word_timestamps) throw "Invalid option pair. Use 'timestamp_size' OR 'word_timestamps'. NOT BOTH!"
-  if(flags.word_timestamps) s += " -ml 1"; // shorthand for timestamp_size:1
-  if(flags.timestamp_size) s += " -ml " + String(flags.timestamp_size);
-  // input language
-  if(flags.language) s += " -l " + flags.language;
-
-  return s;
-}
-
+const getFlags = (flags: IFlagTypes | null): string => {
+  if (!flags) return '';
+  
+  const flagList = [];
+  
+  // Language
+  if (flags.language) {
+    flagList.push(`-l ${flags.language}`);
+  }
+  
+  // Word timestamps
+  if (flags.word_timestamps) {
+    flagList.push('-ml 1');
+  }
+  
+  // Timestamp size
+  if (flags.timestamp_size) {
+    flagList.push(`-ts ${flags.timestamp_size}`);
+  }
+  
+  // Output files
+  if (flags.gen_file_txt) flagList.push('-otxt');
+  if (flags.gen_file_subtitle) flagList.push('-osrt');
+  if (flags.gen_file_vtt) flagList.push('-ovtt');
+  
+  return flagList.join(' ');
+};
 
 // model list: https://github.com/ggerganov/whisper.cpp/#more-audio-samples
 export const MODELS_LIST = {
@@ -72,23 +89,24 @@ export const MODELS_LIST = {
   "medium": "ggml-medium.bin",
   "medium.en": "ggml-medium.en.bin",
   "large-v1": "ggml-large-v1.bin",
-  "large": "ggml-large.bin"
+  "large": "ggml-large.bin",
+  "large-v3-turbo": "ggml-large-v3-turbo.bin",
 }
 
-
-type CppCommandTypes = {
-  filePath: string,
-  modelName?: string,
-  modelPath?: string,
-  options?: IFlagTypes
+export interface CppCommandTypes {
+  filePath?: string;
+  modelName?: string | null;
+  modelPath?: string | null;
+  options?: IFlagTypes | null;
+  isServer?: boolean;
+  port?: number;
 }
 
-
-export type IFlagTypes = {
-  "gen_file_txt"?: boolean,
-  "gen_file_subtitle"?: boolean,
-  "gen_file_vtt"?: boolean,
-  "timestamp_size"?: number,
-  "word_timestamps"?: boolean,
-  "language"?: string
+export interface IFlagTypes {
+  "gen_file_txt"?: boolean;
+  "gen_file_subtitle"?: boolean;
+  "gen_file_vtt"?: boolean;
+  "timestamp_size"?: number;
+  "word_timestamps"?: boolean;
+  "language"?: string;
 }

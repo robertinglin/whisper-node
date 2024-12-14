@@ -1,6 +1,8 @@
 whisper/
 .DS_Store
 .vscode/
+*.bin
+*.exe
 
 # Logs
 logs

@@ -1,8 +1,8 @@
 {
-  "name": "whisper-node",
+  "name": "whisper-node-server",
   "version": "1.1.2",
   "description": "Local audio transcription on CPU. Node.js bindings for OpenAI's Whisper.",
-  "homepage": "https://npmjs.com/whisper-node",
+  "homepage": "https://npmjs.com/whisper-node-server",
   "author": "ariym",
   "main": "dist/index.js",
   "bin": {
@@ -22,11 +22,13 @@
   },
   "dependencies": {
     "readline-sync": "^1.4.10",
-    "shelljs": "^0.8.5"
+    "shelljs": "^0.8.5",
+    "node-fetch": "^2.6.9",
+    "form-data": "^4.0.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ariym/whisper-node.git"
+    "url": "https://github.com/ariym/whisper-node-server.git"
   },
   "license": "MIT",
   "keywords": [

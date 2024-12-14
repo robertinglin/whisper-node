@@ -1,7 +1,7 @@
-# whisper-node
+# whisper-node-server
 
-[![npm downloads](https://img.shields.io/npm/dm/whisper-node)](https://npmjs.org/package/whisper-node)
-[![npm downloads](https://img.shields.io/npm/l/whisper-node)](https://npmjs.org/package/whisper-node)  
+[![npm downloads](https://img.shields.io/npm/dm/whisper-node-server)](https://npmjs.org/package/whisper-node-server)
+[![npm downloads](https://img.shields.io/npm/l/whisper-node-server)](https://npmjs.org/package/whisper-node-server)  
 
 Node.js bindings for OpenAI's Whisper. Transcription done local.
 
@@ -10,31 +10,124 @@ Node.js bindings for OpenAI's Whisper. Transcription done local.
 - Output transcripts to **JSON** (also .txt .srt .vtt)
 - **Optimized for CPU** (Including Apple Silicon ARM)
 - Timestamp precision to single word
+- Server mode with automatic audio conversion
+- Optional CUDA support for GPU acceleration
 
 ## Installation
 
 1. Add dependency to project
 
 ```text
-npm install whisper-node
+npm install whisper-node-server
 ```
 
 2. Download whisper model of choice [OPTIONAL]
 
 ```text
-npx whisper-node download
+npx whisper-node-server download
 ```
 
 [Requirement for Windows: Install the ```make``` command from here.](https://gnuwin32.sourceforge.net/packages/make.htm)
 
 ## Usage
 
+### Direct Usage
+
 ```javascript
-import whisper from 'whisper-node';
+import whisper from 'whisper-node-server';
 
 const transcript = await whisper("example/sample.wav");
 
 console.log(transcript); // output: [ {start,end,speech} ]
+```
+
+### Server Mode
+
+1. Set up environment variables:
+```env
+WHISPER_MODEL=base.en
+AUDIO_SAMPLE_RATE=16000
+AUDIO_CHANNELS=1
+```
+
+2. Create the server:
+```javascript
+import express from 'express';
+import multer from 'multer';
+import whisper from 'whisper-node-server';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import fs from 'fs';
+
+const app = express();
+const upload = multer({ dest: 'uploads/' });
+const execPromise = promisify(exec);
+
+// Transcribe endpoint
+app.post('/transcribe', upload.single('audio'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).send('No audio file uploaded');
+    }
+
+    const inputPath = req.file.path;
+    const outputPath = inputPath.replace(/\.wav$/, '_converted.wav');
+
+    // Convert audio to configured sample rate using FFmpeg
+    await execPromise(`ffmpeg -y -i "${inputPath}" -ar ${process.env.AUDIO_SAMPLE_RATE} -ac ${process.env.AUDIO_CHANNELS} -c:a pcm_s16le "${outputPath}"`);
+
+    // Transcribe the audio
+    const options = {
+      modelName: process.env.WHISPER_MODEL,
+      whisperOptions: {
+        language: 'auto',
+        word_timestamps: true
+      }
+    };
+
+    const transcript = await whisper(outputPath, options);
+
+    // Clean up temp files
+    fs.unlinkSync(inputPath);
+    fs.unlinkSync(outputPath);
+
+    // Extract speech text
+    const text = transcript ? (Array.isArray(transcript) ? 
+      transcript.map(t => t.speech).join(' ') : 
+      transcript.toString()) : '';
+      
+    res.json({ text });
+
+  } catch (error) {
+    console.error('Transcription error:', error);
+    res.status(500).send('Error processing audio: ' + error.message);
+  }
+});
+
+app.listen(8080, () => {
+  console.log('Server running on port 8080');
+});
+```
+
+3. Send audio for transcription:
+```javascript
+// Convert your audio to a blob
+const wavBlob = await float32ArrayToWav(audio);
+const formData = new FormData();
+formData.append('audio', wavBlob, 'recording.wav');
+
+// Send to server
+const response = await fetch('http://localhost:8080/transcribe', {
+  method: 'POST',
+  body: formData,
+});
+
+if (!response.ok) {
+  throw new Error('Transcription failed');
+}
+
+const data = await response.json();
+console.log('Transcription:', data.text);
 ```
 
 ### Output (JSON)
@@ -52,7 +145,7 @@ console.log(transcript); // output: [ {start,end,speech} ]
 ### Full Options List
 
 ```javascript
-import whisper from 'whisper-node';
+import whisper from 'whisper-node-server';
 
 const filePath = "example/sample.wav"; // required
 
@@ -92,12 +185,12 @@ Example .mp3 file converted with an [FFmpeg](https://ffmpeg.org) command: ```ffm
 - [ ] [fluent-ffmpeg](https://www.npmjs.com/package/fluent-ffmpeg) to automatically convert to 16Hz .wav files as well as support separating audio from video
 - [ ] [Pyanote diarization](https://huggingface.co/pyannote/speaker-diarization) for speaker names
 - [ ] [Implement WhisperX as optional alternative model](https://github.com/m-bain/whisperX) for diarization and higher precision timestamps (as alternative to C++ version)
-- [ ] Add option for viewing detected langauge as described in [Issue 16](https://github.com/ariym/whisper-node/issues/16)
-- [ ] Include typescript typescript types in ```d.ts``` file
+- [ ] Add option for viewing detected langauge as described in [Issue 16](https://github.com/ariym/whisper-node-server/issues/16)
+- [ ] Include typescript types in ```d.ts``` file
 - [x] Add support for language option
 - [ ] Add support for transcribing audio streams as already implemented in whisper.cpp
 
-## Modifying whisper-node
+## Modifying whisper-node-server
 
 ```npm run dev``` - runs nodemon and tsc on '/src/test.ts'
 
