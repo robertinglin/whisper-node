@@ -24,7 +24,6 @@ const MODELS_LIST = [
   "large-v3-turbo"
 ];
 
-
 const askModel = async () => {
   const answer = await readlineSync.question(`\n[whisper-node-server] Enter model name (e.g. 'base.en') or 'cancel' to exit\n(ENTER for base.en): `)
 
@@ -47,11 +46,23 @@ const askModel = async () => {
   return answer;
 }
 
-
+const checkCUDAAvailable = (): boolean => {
+  // Check if nvidia-smi command exists and returns successfully
+  const result = shell.which('nvidia-smi');
+  if (!result) {
+    return false;
+  }
+  
+  const { code } = shell.exec('nvidia-smi', { silent: true });
+  return code === 0;
+};
 
 export default async function downloadModel() {
   try {
-    // shell.exec("echo $PWD");
+    console.log("[whisper-node-server] Checking CUDA availability...");
+    const hasCUDA = checkCUDAAvailable();
+    console.log(`[whisper-node-server] CUDA support: ${hasCUDA ? 'YES' : 'NO'}`);
+
     shell.cd(NODE_MODULES_MODELS_PATH);
 
     console.log(`
@@ -76,7 +87,12 @@ export default async function downloadModel() {
     }
 
     const modelName = await askModel();
-
+    console.log(`[whisper-node-server] Downloading model: ${modelName}`);
+    
+    // Determine build type based on CUDA availability
+    const buildType = hasCUDA ? 'cuda' : 'default';
+    console.log(`[whisper-node-server] Using build type: ${buildType}`);
+    
     // default is .sh
     let scriptPath = "./download-ggml-model.sh"
     // windows .cmd version
@@ -96,7 +112,7 @@ export default async function downloadModel() {
     shell.exec("make -j", {
       env: {
         ...process.env,
-        GGML_CUDA: '1',
+        GGML_CUDA: hasCUDA ? '1' : '0',
         CUDA_PATH: 'C:/PROGRA~1/NVIDIA~1/CUDA/v12.6',
         CUDA_DOCKER_ARCH: 'compute_86',
         GGML_CUDA_FORCE_MMQ: '1',
