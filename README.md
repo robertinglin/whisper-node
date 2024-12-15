@@ -59,11 +59,12 @@ AUDIO_CHANNELS=1
 ```javascript
 import express from 'express';
 import multer from 'multer';
-import whisper from 'whisper-node-server';
+import { whisper, whisperInit } from 'whisper-node-server';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
 
+whisperInit();
 const app = express();
 const upload = multer({ dest: 'uploads/' });
 const execPromise = promisify(exec);
@@ -145,29 +146,6 @@ console.log('Transcription:', data.text);
     "speech": "howdy"         // transcription
   }
 ]
-```
-
-### Full Options List
-
-```javascript
-import whisper from 'whisper-node-server';
-
-const filePath = "example/sample.wav"; // required
-
-const options = {
-  modelName: "base.en",       // default
-  // modelPath: "/custom/path/to/model.bin", // use model in a custom directory (cannot use along with 'modelName')
-  whisperOptions: {
-    language: 'auto'          // default (use 'auto' for auto detect)
-    gen_file_txt: false,      // outputs .txt file
-    gen_file_subtitle: false, // outputs .srt file
-    gen_file_vtt: false,      // outputs .vtt file
-    word_timestamps: true     // timestamp for every word
-    // timestamp_size: 0      // cannot use along with word_timestamps:true
-  }
-}
-
-const transcript = await whisper(filePath, options);
 ```
 
 ### Input File Format
